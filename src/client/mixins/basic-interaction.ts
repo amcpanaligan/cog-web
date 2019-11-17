@@ -69,19 +69,15 @@ export class BasicInteractionAware {
 
   public async clickElement(selector: string) {
     try {
-      await this.client['___currentFrame'].click(selector);
+      await this.client['___currentFrame'].evaluate(
+        async (selector) => {
+          const element = document.querySelector(selector);
+          return element ? element.click() : Promise.reject();
+        },
+        selector,
+      );
     } catch (e) {
-      try {
-        await this.client['___currentFrame'].evaluate(
-          async (selector) => {
-            document.querySelector(selector).click();
-            return true;
-          },
-          selector,
-        );
-      } catch (e) {
-        throw Error('Element may not be visible or clickable');
-      }
+      throw Error('Element may not be visible or clickable');
     }
   }
 
@@ -238,22 +234,7 @@ export class BasicInteractionAware {
             .then(res)
             .catch(e => rej(Error('Submit button still there')));
         }),
-        new Promise((res, rej) => {
-          this.client['___currentFrame'].click(selector)
-            .then(res)
-            .catch((e) => {
-              this.client.waitForFunction(
-                (selector) => {
-                  document.querySelector(selector).click();
-                  return true;
-                },
-                {},
-                selector,
-              )
-                .then(res)
-                .catch(e => rej(Error('Unable to click submit button')));
-            });
-        }),
+        await this.clickElement(selector),
         new Promise((res, rej) => {
           this.client['___currentFrame'].waitFor(10000)
             .then(res)
